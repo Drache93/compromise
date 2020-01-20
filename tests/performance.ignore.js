@@ -1,10 +1,10 @@
 const test = require('tape')
 const nlp = require('./_lib')
-const shell = require('shelljs')
 const fs = require('fs')
 const path = require('path')
+const fetch = require('node-fetch')
 
-function calculateRegression(x, y, t) {
+function calculateRegression(x, y) {
   const sumX = x.reduce((acc, v) => acc + v, 0)
   const sumY = y.reduce((acc, v) => acc + v, 0)
 
@@ -25,49 +25,58 @@ function calculateRegression(x, y, t) {
   const a = avgY - b * avgX
   const result = `${b.toFixed(5)}X ${a > 0 ? '+' : '-'} ${a.toFixed(5)}`
 
-  // test something....
-
-  return result
+  return { regression: result, average: avgY.toFixed(5) }
 }
 
 test('Performance', function(t) {
-  const res = shell.exec('wget -O - https://unpkg.com/nlp-corpus@3.3.0/builds/nlp-corpus-1.json')
-  const outputPath = path.join(__dirname, './performance.results.json')
+  fetch('https://unpkg.com/nlp-corpus@3.3.0/builds/nlp-corpus-1.json')
+    .then(res => res.json())
+    .then(res => {
+      const outputPath = path.join(__dirname, './performance.results.json')
 
-  if (!res.stdout) {
-    t.fail(res.stderr)
-  }
+      let expected = {}
+      if (fs.existsSync(outputPath)) {
+        expected = JSON.parse(fs.readFileSync(outputPath))
+      }
 
-  const textArr = JSON.parse(res.stdout).sort((a, b) => a.length - b.length)
-  const x = []
-  const y = []
+      const textArr = res.sort((a, b) => a.length - b.length)
+      const x = []
+      const y = []
 
-  for (let i = 0; i < textArr.length; i++) {
-    const text = textArr[i]
-    const yI = []
+      for (let i = 0; i < textArr.length; i++) {
+        const text = textArr[i]
+        const yI = []
 
-    console.group('Test', i)
+        console.group('Test', i)
 
-    for (let j = 0; j < 5; j++) {
-      console.log('--', j)
-      const start = Date.now()
-      nlp(text)
-      const end = Date.now()
+        for (let j = 0; j < 5; j++) {
+          console.log('--', j)
+          const _nlp = nlp.clone() // Avoid caching?
+          const start = Date.now()
+          _nlp(text)
+          const end = Date.now()
 
-      yI.push(end - start)
-    }
+          yI.push(end - start)
+        }
 
-    x.push(text.length)
-    y.push(yI.reduce((acc, v) => acc + v, 0) / yI.length)
+        x.push(text.length)
+        y.push(yI.reduce((acc, v) => acc + v, 0) / yI.length)
 
-    console.groupEnd()
-  }
+        console.groupEnd()
+      }
 
-  const regression = calculateRegression(x, y, t)
+      const regression = calculateRegression(x, y, t)
+      const diff = Math.abs(regression.average - expected.average).toFixed(5)
+      const results = Object.assign({ x, y, key: { x: 'Length', y: 'Time' }, diff }, regression)
 
-  const results = { x, y, key: { x: 'Length', y: 'Time' }, regression }
+      fs.writeFileSync(outputPath, JSON.stringify(results, null, 2))
 
-  fs.writeFileSync(outputPath, JSON.stringify(results, null, 2))
+      t.comment('Previous average: ' + expected.average)
+      t.comment('Current average: ' + results.average)
+      t.comment('Performance change: ' + diff)
 
-  t.end()
+      t.true(diff < 20, 'Should not see large performance change between runs - unless you did something awesome!')
+
+      t.end()
+    })
 })
