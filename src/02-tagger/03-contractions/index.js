@@ -15,7 +15,8 @@ const createPhrase = function(found, doc) {
   let terms = phrase.terms()
   checkLexicon(terms, doc.world)
   //make these terms implicit
-  terms.forEach(t => {
+  for (let i = 0; i < terms.length; i++) {
+    const t = terms[i]
     t.implicit = t.text
     t.text = ''
     t.clean = ''
@@ -27,7 +28,8 @@ const createPhrase = function(found, doc) {
       t.tags.Number = true
       t.tags.Cardinal = true
     }
-  })
+  }
+
   return phrase
 }
 

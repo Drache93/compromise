@@ -106,7 +106,11 @@ const fromExportData = function(json, world) {
     //create Term objects
     terms = terms.map((str, i) => {
       let term = new Term(str)
-      tagArr[i].forEach(tag => term.tag(tag, '', world))
+
+      for (let j = 0; j < tagArr[i].length; j++) {
+        term.tag(tagArr[i][j], '', world)
+      }
+
       pool.add(term)
       return term
     })
