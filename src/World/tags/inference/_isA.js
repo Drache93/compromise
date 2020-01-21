@@ -11,9 +11,12 @@ const inferIsA = function(tags) {
     for (let i = 0; i < len; i++) {
       let down = tag.isA[i]
       if (tags[down]) {
-        updatedIsA.add(...tags[down].isA)
+        for (let l = 0; l < tags[down].isA.length; l++) {
+          updatedIsA.add(tags[down].isA[l])
+        }
       }
     }
+
     // clean it up
     tag.isA = [...updatedIsA]
   }

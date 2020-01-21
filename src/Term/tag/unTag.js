@@ -22,16 +22,15 @@ const untagAll = function(term, tagOrTags, reason, world) {
     }
 
     for (let j = 0; j < t.lineage.length; j++) {
-      remove.add(t[j])
+      remove.add(t.lineage[j])
     }
   }
 
   // Create new object with removed tags
-  const keys = Object.keys(term.tags)
+  const entries = Object.entries(term.tags)
   const newTags = {}
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i]
-    const v = term.tags[k]
+  for (let i = 0; i < entries.length; i++) {
+    const [k, v] = entries[i]
 
     if (v === true && remove.has(k)) {
       if (isVerbose === true) {

@@ -85,8 +85,24 @@ function _slicedToArray(arr, i) {
   return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest();
 }
 
+function _toConsumableArray(arr) {
+  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread();
+}
+
+function _arrayWithoutHoles(arr) {
+  if (Array.isArray(arr)) {
+    for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+}
+
 function _arrayWithHoles(arr) {
   if (Array.isArray(arr)) return arr;
+}
+
+function _iterableToArray(iter) {
+  if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter);
 }
 
 function _iterableToArrayLimit(arr, i) {
@@ -117,6 +133,10 @@ function _iterableToArrayLimit(arr, i) {
   }
 
   return _arr;
+}
+
+function _nonIterableSpread() {
+  throw new TypeError("Invalid attempt to spread non-iterable instance");
 }
 
 function _nonIterableRest() {
@@ -1037,59 +1057,55 @@ var addTags = function addTags(term, tags, reason, world) {
 
 var add = addTags;
 
-/** remove this tag, and its descentents from the term */
-
-var unTag = function unTag(t, tag, reason, world) {
-  var isVerbose = world.isVerbose(); //support '*' for removing all tags
-
-  if (tag === '*') {
-    t.tags = {};
-    return t;
-  } // remove the tag
-
-
-  if (t.tags[tag] === true) {
-    delete t.tags[tag]; //log in verbose-mode
-
-    if (isVerbose === true) {
-      fns.logUntag(t, tag, reason);
-    }
-  } //delete downstream tags too
-
+var untagAll = function untagAll(term, tagOrTags, reason, world) {
+  if (tagOrTags === '*') {
+    term.tags = {};
+    return term;
+  }
 
   var tagset = world.tags;
+  var tags = Array.isArray(tagOrTags) ? tagOrTags : [tagOrTags];
+  var isVerbose = world.isVerbose(); // Add tags to remove list
 
-  if (tagset[tag]) {
-    var lineage = tagset[tag].lineage;
+  var remove = new Set(tags); // Get tagset for each tag and add lineage to remove list
 
-    for (var i = 0; i < lineage.length; i++) {
-      if (t.tags[lineage[i]] === true) {
-        delete t.tags[lineage[i]];
+  for (var i = 0; i < tags.length; i++) {
+    var t = tagset[tags[i]];
 
-        if (isVerbose === true) {
-          fns.logUntag(t, ' - ' + lineage[i]);
-        }
+    if (!t) {
+      continue;
+    }
+
+    for (var j = 0; j < t.lineage.length; j++) {
+      remove.add(t.lineage[j]);
+    }
+  } // Create new object with removed tags
+
+
+  var entries = Object.entries(term.tags);
+  var newTags = {};
+
+  for (var _i = 0; _i < entries.length; _i++) {
+    var _entries$_i = _slicedToArray(entries[_i], 2),
+        k = _entries$_i[0],
+        v = _entries$_i[1];
+
+    if (v === true && remove.has(k)) {
+      if (isVerbose === true) {
+        fns.logUntag(term, k, reason);
       }
-    }
-  }
 
-  return t;
-}; //handle an array of tags
-
-
-var untagAll = function untagAll(term, tags, reason, world) {
-  if (typeof tags !== 'string' && tags) {
-    for (var i = 0; i < tags.length; i++) {
-      unTag(term, tags[i], reason, world);
+      continue;
     }
 
-    return;
+    newTags[k] = v;
   }
 
-  unTag(term, tags, reason, world);
+  term.tags = newTags;
+  return term;
 };
 
-var unTag_1 = untagAll;
+var unTag = untagAll;
 
 var canBe = function canBe(term, tag, world) {
   var tagset = world.tags; // cleanup tag
@@ -1146,8 +1162,8 @@ var tagSafe = function tagSafe(tags, reason, world) {
  */
 
 
-var unTag_1$1 = function unTag_1$1(tags, reason, world) {
-  unTag_1(this, tags, reason, world);
+var unTag_1 = function unTag_1(tags, reason, world) {
+  unTag(this, tags, reason, world);
   return this;
 };
 /** is this tag consistent with the word's current tags?
@@ -1163,7 +1179,7 @@ var canBe_1$1 = function canBe_1$1(tags, world) {
 var tag = {
   tag: tag_1,
   tagSafe: tagSafe,
-  unTag: unTag_1$1,
+  unTag: unTag_1,
   canBe: canBe_1$1
 };
 
@@ -3811,66 +3827,71 @@ var addColors = function addColors(tags) {
 
 var _color = addColors;
 
-var unique$2 = function unique(arr) {
-  return arr.filter(function (v, i, a) {
-    return a.indexOf(v) === i;
-  });
-}; //add 'downward' tags (that immediately depend on this one)
-
-
+//add 'downward' tags (that immediately depend on this one)
 var inferIsA = function inferIsA(tags) {
-  Object.keys(tags).forEach(function (k) {
+  var keys = Object.keys(tags);
+
+  for (var j = 0; j < keys.length; j++) {
+    var k = keys[j];
     var tag = tags[k];
     var len = tag.isA.length;
+    var updatedIsA = new Set(tag.isA);
 
     for (var i = 0; i < len; i++) {
       var down = tag.isA[i];
 
       if (tags[down]) {
-        tag.isA = tag.isA.concat(tags[down].isA);
+        for (var l = 0; l < tags[down].isA.length; l++) {
+          updatedIsA.add(tags[down].isA[l]);
+        }
       }
     } // clean it up
 
 
-    tag.isA = unique$2(tag.isA);
-  });
+    tag.isA = _toConsumableArray(updatedIsA);
+  }
+
   return tags;
 };
 
 var _isA = inferIsA;
 
-var unique$3 = function unique(arr) {
-  return arr.filter(function (v, i, a) {
-    return a.indexOf(v) === i;
-  });
-}; // crawl the tag-graph and infer any conflicts
+// crawl the tag-graph and infer any conflicts
 // faster than doing this at tag-time
-
-
 var inferNotA = function inferNotA(tags) {
   var keys = Object.keys(tags);
-  keys.forEach(function (k) {
+
+  for (var j = 0; j < keys.length; j++) {
+    var k = keys[j];
     var tag = tags[k];
-    tag.notA = tag.notA || [];
-    tag.isA.forEach(function (down) {
+    var updatedNotA = new Set(tag.notA || []);
+
+    for (var l = 0; l < tag.isA.length; l++) {
+      var down = tag.isA[l];
+
       if (tags[down] && tags[down].notA) {
         // borrow its conflicts
         var notA = typeof tags[down].notA === 'string' ? [tags[down].isA] : tags[down].notA || [];
-        tag.notA = tag.notA.concat(notA);
+
+        for (var ll = 0; ll < notA.length; ll++) {
+          updatedNotA.add(notA[ll]);
+        }
       }
-    }); // any tag that lists us as a conflict, we conflict it back.
+    } // any tag that lists us as a conflict, we conflict it back.
+
 
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
 
       if (tags[key].notA.indexOf(k) !== -1) {
-        tag.notA.push(key);
+        updatedNotA.add(key);
       }
     } // clean it up
 
 
-    tag.notA = unique$3(tag.notA);
-  });
+    tag.notA = _toConsumableArray(updatedNotA);
+  }
+
   return tags;
 };
 
@@ -7776,7 +7797,7 @@ var reverse = function reverse() {
 /** remove any duplicate matches */
 
 
-var unique$4 = function unique() {
+var unique$2 = function unique() {
   var list = [].concat(this.list);
   var obj = {};
   list = list.filter(function (p) {
@@ -7795,7 +7816,7 @@ var unique$4 = function unique() {
 var _01Sort = {
   sort: sort,
   reverse: reverse,
-  unique: unique$4
+  unique: unique$2
 };
 
 var isPunct = /[\[\]{}⟨⟩:,،、‒–—―…‹›«»‐\-;\/⁄·*\•^†‡°¡¿※№÷×ºª%‰=‱¶§~|‖¦©℗®℠™¤₳฿]/g;

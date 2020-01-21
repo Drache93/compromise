@@ -13,7 +13,10 @@ const inferNotA = function(tags) {
       if (tags[down] && tags[down].notA) {
         // borrow its conflicts
         const notA = typeof tags[down].notA === 'string' ? [tags[down].isA] : tags[down].notA || []
-        updatedNotA.add(...notA)
+
+        for (let ll = 0; ll < notA.length; ll++) {
+          updatedNotA.add(notA[ll])
+        }
       }
     }
     // any tag that lists us as a conflict, we conflict it back.
@@ -24,6 +27,7 @@ const inferNotA = function(tags) {
         updatedNotA.add(key)
       }
     }
+
     // clean it up
     tag.notA = [...updatedNotA]
   }
