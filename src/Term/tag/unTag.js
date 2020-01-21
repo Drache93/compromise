@@ -1,45 +1,52 @@
 const fns = require('./fns')
 
-/** remove this tag, and its descentents from the term */
-const unTag = function(t, tag, reason, world) {
-  const isVerbose = world.isVerbose()
-  //support '*' for removing all tags
-  if (tag === '*') {
-    t.tags = {}
-    return t
+const untagAll = function(term, tagOrTags, reason, world) {
+  if (tagOrTags === '*') {
+    term.tags = {}
+    return term
   }
-  // remove the tag
-  if (t.tags[tag] === true) {
-    delete t.tags[tag]
-    //log in verbose-mode
-    if (isVerbose === true) {
-      fns.logUntag(t, tag, reason)
-    }
-  }
-  //delete downstream tags too
+
   const tagset = world.tags
-  if (tagset[tag]) {
-    let lineage = tagset[tag].lineage
-    for (let i = 0; i < lineage.length; i++) {
-      if (t.tags[lineage[i]] === true) {
-        delete t.tags[lineage[i]]
-        if (isVerbose === true) {
-          fns.logUntag(t, ' - ' + lineage[i])
-        }
-      }
+  const tags = Array.isArray(tagOrTags) ? tagOrTags : [tagOrTags]
+  const isVerbose = world.isVerbose()
+
+  // Add tags to remove list
+  const remove = new Set(tags)
+
+  // Get tagset for each tag and add lineage to remove list
+  for (let i = 0; i < tags.length; i++) {
+    const t = tagset[tags[i]]
+
+    if (!t) {
+      continue
+    }
+
+    for (let j = 0; j < t.lineage.length; j++) {
+      remove.add(t[j])
     }
   }
-  return t
+
+  // Create new object with removed tags
+  const keys = Object.keys(term.tags)
+  const newTags = {}
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i]
+    const v = term.tags[k]
+
+    if (v === true && remove.has(k)) {
+      if (isVerbose === true) {
+        fns.logUntag(term, k, reason)
+      }
+
+      continue
+    }
+
+    newTags[k] = v
+  }
+
+  term.tags = newTags
+
+  return term
 }
 
-//handle an array of tags
-const untagAll = function(term, tags, reason, world) {
-  if (typeof tags !== 'string' && tags) {
-    for (let i = 0; i < tags.length; i++) {
-      unTag(term, tags[i], reason, world)
-    }
-    return
-  }
-  unTag(term, tags, reason, world)
-}
 module.exports = untagAll

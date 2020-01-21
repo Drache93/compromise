@@ -3264,7 +3264,9 @@ var splitWords = function splitWords(str) {
 
 var _02Words = splitWords;
 
-var addLinks = function addLinks(terms) {
+//add forward/backward 'linked-list' prev/next ids
+
+var linkTerms = function linkTerms(terms) {
   terms.forEach(function (term, i) {
     if (i > 0) {
       term.prev = terms[i - 1].id;
@@ -3304,7 +3306,7 @@ var fromText = function fromText() {
       return term;
     }); //add next/previous ids
 
-    addLinks(terms); //return phrase objects
+    linkTerms(terms); //return phrase objects
 
     return new Phrase_1(terms[0].id, terms.length, pool);
   }); //return them ready for a Document object
@@ -3328,22 +3330,51 @@ var parseTags = function parseTags(text, tagList) {
       return tagList[num];
     });
   });
-};
-/** create a word-pool and Phrase objects from .export() json*/
+}; //create phrases from .json() output
 
 
-var fromJSON = function fromJSON(json, world) {
-  if (typeof json === 'string') {
-    json = JSON.parse(json);
-  }
+var fromJSONData = function fromJSONData(json, world) {
+  var pool = new Pool_1(); //create Phrase objects
 
+  var phrases = json.map(function (o) {
+    // tokenize words from sentence text
+    var terms = _02Words(o.text || ''); //does it look okay-enough?
+
+    if (terms.length !== o.terms.length) {
+      console.warn('Compromise: json .load() interpretation warning.');
+    } //create Term objects
+
+
+    terms = terms.map(function (str, i) {
+      var term = new Term_1(str);
+      o.terms[i].tags.forEach(function (tag) {
+        return term.tag(tag, '', world);
+      });
+      pool.add(term);
+      return term;
+    }); //add prev/next links
+
+    linkTerms(terms); // return a proper Phrase object
+
+    return new Phrase_1(terms[0].id, terms.length, pool);
+  });
+  return phrases;
+}; //create phrases from .export() output
+
+
+var fromExportData = function fromExportData(json, world) {
   var pool = new Pool_1(); //create Phrase objects
 
   var phrases = json.list.map(function (o) {
     // tokenize words from sentence text
     var terms = _02Words(o[0]); // unpack the tag data for each term
 
-    var tagArr = parseTags(o[1], json.tags); //create Term objects
+    var tagArr = parseTags(o[1], json.tags); //does it look okay-enough?
+
+    if (terms.length !== tagArr.length) {
+      console.warn('Compromise: json .load() interpretation warning.');
+    } //create Term objects
+
 
     terms = terms.map(function (str, i) {
       var term = new Term_1(str);
@@ -3354,11 +3385,31 @@ var fromJSON = function fromJSON(json, world) {
       return term;
     }); //add prev/next links
 
-    addLinks(terms); // return a proper Phrase object
+    linkTerms(terms); // return a proper Phrase object
 
     return new Phrase_1(terms[0].id, terms.length, pool);
   });
   return phrases;
+};
+
+var isArray$2 = function isArray(thing) {
+  return toString.call(thing) === '[object Array]';
+};
+/** create a word-pool and Phrase objects from .export() json*/
+
+
+var fromJSON = function fromJSON(json, world) {
+  if (typeof json === 'string') {
+    json = JSON.parse(json);
+  } //is this .export() output?
+
+
+  if (isArray$2(json) === false && isArray$2(json.list) === true) {
+    return fromExportData(json, world);
+  } //otherwise, assume .json() output
+
+
+  return fromJSONData(json, world);
 };
 
 var _01Tokenizer = {

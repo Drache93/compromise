@@ -71,9 +71,9 @@ test('Performance', function(t) {
 
       fs.writeFileSync(outputPath, JSON.stringify(results, null, 2))
 
-      t.comment('Previous average: ' + expected.average)
-      t.comment('Current average: ' + results.average)
-      t.comment('Performance change: ' + diff)
+      console.log('Previous average:', expected.average)
+      console.log('Current average:', results.average)
+      console.log('Performance change:', diff)
 
       t.true(diff < 20, 'Should not see large performance change between runs - unless you did something awesome!')
 
