@@ -1,4 +1,5 @@
 const add = require('./add')
+const fastAdd = require('./fastAdd')
 const unTag = require('./unTag')
 const canBe = require('./canBe')
 
@@ -8,6 +9,13 @@ const canBe = require('./canBe')
  */
 exports.tag = function(tags, reason, world) {
   add(this, tags, reason, world)
+  return this
+}
+
+/** only tag this term if it's consistent with it's current tags */
+exports.tagUnsafe = function(tag, reason, world) {
+  fastAdd(this, tag, reason, world)
+
   return this
 }
 

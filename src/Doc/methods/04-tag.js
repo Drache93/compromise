@@ -1,4 +1,5 @@
 const setTag = require('./_setTag')
+const fastTag = require('./_fastTag')
 
 /** Give all terms the given tag */
 exports.tag = function(tags, why) {
@@ -6,6 +7,15 @@ exports.tag = function(tags, why) {
     return this
   }
   setTag(tags, this, false, why)
+  return this
+}
+
+/** Only apply tag to terms if it is consistent with current tags */
+exports.tagUnsafe = function(tags, why) {
+  if (!tags) {
+    return this
+  }
+  fastTag(tags, this, why)
   return this
 }
 
